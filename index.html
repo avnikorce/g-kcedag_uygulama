@@ -36,9 +36,12 @@
     padding:20px 20px 18px;
     display:flex;align-items:center;gap:14px;
   }
-  header svg{flex:none}
+  .logo-kutu{flex:none;background:#fff;border-radius:10px;width:54px;height:54px;
+    display:flex;align-items:center;justify-content:center;padding:5px}
+  .logo-kutu img{max-width:100%;max-height:100%;display:block}
   .eyebrow{font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:#9DB4C8;margin-bottom:3px}
-  h1{font-size:19px;font-weight:700;letter-spacing:-.01em}
+  h1{font-size:17px;font-weight:700;letter-spacing:-.01em;line-height:1.2}
+  .alt-baslik{font-size:12px;color:#9DB4C8;margin-top:3px}
 
   /* ---------- Bölümler ---------- */
   .bolum{background:var(--kart);border:1px solid var(--cizgi);border-radius:12px;margin:14px 14px 0;padding:16px}
@@ -100,6 +103,16 @@
   .hizli-cip{border-style:dashed;color:var(--celik)}
   .hizli-cip.aktif{background:var(--celik);border-color:var(--celik);border-style:solid;color:#fff}
   #ekPersonel{margin-top:10px}
+  #personelSonuclar{margin-top:8px;border:1px solid var(--cizgi);border-radius:10px;
+    max-height:220px;overflow-y:auto;display:none;background:#fff}
+  .p-sonuc{padding:12px 14px;border-bottom:1px solid var(--zemin);cursor:pointer;font-size:15px}
+  .p-sonuc:last-child{border-bottom:none}
+  .p-sonuc:active{background:var(--ruzgar-acik)}
+  .p-cip{display:inline-flex;align-items:center;gap:8px;
+    background:var(--lacivert);color:#fff;border-radius:999px;
+    padding:9px 10px 9px 15px;font-size:14px}
+  .p-cip button{border:none;background:rgba(255,255,255,.18);color:#fff;
+    width:22px;height:22px;border-radius:50%;font-size:14px;line-height:1;cursor:pointer}
 
   /* ---------- Gönder ---------- */
   .gonder-bar{
@@ -140,18 +153,11 @@
 <div class="sayfa">
 
   <header>
-    <svg width="34" height="34" viewBox="0 0 34 34" fill="none" aria-hidden="true">
-      <line x1="17" y1="16" x2="17" y2="32" stroke="#9DB4C8" stroke-width="2.6" stroke-linecap="round"/>
-      <g stroke="#FFFFFF" stroke-width="2.6" stroke-linecap="round">
-        <line x1="17" y1="15" x2="17" y2="3"/>
-        <line x1="17" y1="15" x2="6.6" y2="21"/>
-        <line x1="17" y1="15" x2="27.4" y2="21"/>
-      </g>
-      <circle cx="17" cy="15" r="2.6" fill="#FFFFFF"/>
-    </svg>
+    <div class="logo-kutu"><img src="logo.png" alt="Rönesans Enerji"></div>
     <div>
-      <div class="eyebrow">Gökçedağ RES</div>
-      <h1>Arıza Müdahale Kaydı</h1>
+      <div class="eyebrow">Rönesans Enerji</div>
+      <h1>Gökçedağ Rüzgar Üretim A.Ş.</h1>
+      <div class="alt-baslik">Arıza Müdahale Kaydı</div>
     </div>
   </header>
 
@@ -200,16 +206,26 @@
       <label class="baslik" for="aciklama">Açıklama</label>
       <div class="cipler" style="margin-bottom:10px">
         <button type="button" class="cip hizli-cip" data-metin="Arıza Giderildi">Arıza Giderildi</button>
-        <button type="button" class="cip hizli-cip" data-metin="Gidildi">Gidildi</button>
         <button type="button" class="cip hizli-cip" data-metin="Sorun Halledilmedi, Yarın Tekrar Gidilecek">Yarın Tekrar</button>
+        <button type="button" class="cip hizli-cip" data-metin="Rüzgardan dolayı çalışma yapılamadı">Rüzgar</button>
       </div>
       <textarea id="aciklama" placeholder="Not ekleyin (isteğe bağlı)"></textarea>
     </div>
 
     <div class="bolum">
       <label class="baslik zorunlu">Müdahale Eden Kişiler</label>
-      <div class="cipler" id="personelCipler"></div>
-      <input type="text" id="ekPersonel" placeholder="Listede olmayan kişi (isteğe bağlı)">
+      <div class="cipler" id="personelSecili" style="margin-bottom:10px"></div>
+      <div class="arama-kutu">
+        <span class="arama-ikon">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <circle cx="7" cy="7" r="5" stroke="currentColor" stroke-width="1.8"/>
+            <line x1="11" y1="11" x2="15" y2="15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+          </svg>
+        </span>
+        <input type="text" id="personelArama" placeholder="İsim yazın, listeden seçin" autocomplete="off">
+      </div>
+      <div id="personelSonuclar"></div>
+      <input type="text" id="ekPersonel" placeholder="Listede olmayan kişi (isteğe bağlı)" style="margin-top:10px">
     </div>
 
     <div class="bolum">
@@ -274,16 +290,54 @@ var PERSONEL = [
   }
 })();
 
-// Personel çipleri
-(function(){
-  var kap = document.getElementById("personelCipler");
-  PERSONEL.forEach(function(ad){
-    var b = document.createElement("button");
-    b.type = "button"; b.className = "cip"; b.textContent = ad;
-    b.addEventListener("click", function(){ b.classList.toggle("aktif"); });
-    kap.appendChild(b);
+// Personel: aranabilir seçim
+var seciliPersonel = [];
+var pArama = document.getElementById("personelArama");
+var pSonuc = document.getElementById("personelSonuclar");
+
+function personelCiz(){
+  var kap = document.getElementById("personelSecili");
+  kap.innerHTML = "";
+  seciliPersonel.forEach(function(ad, i){
+    var c = document.createElement("span");
+    c.className = "p-cip";
+    c.innerHTML = ad + ' <button type="button" aria-label="Kaldır">&times;</button>';
+    c.querySelector("button").addEventListener("click", function(){
+      seciliPersonel.splice(i,1); personelCiz();
+    });
+    kap.appendChild(c);
   });
-})();
+}
+
+function personelListele(q){
+  var esles = PERSONEL.filter(function(ad){
+    return seciliPersonel.indexOf(ad) === -1 &&
+           (!q || ad.toLocaleLowerCase("tr").indexOf(q) !== -1);
+  });
+  pSonuc.innerHTML = "";
+  if (!esles.length){ pSonuc.style.display = "none"; return; }
+  esles.forEach(function(ad){
+    var d = document.createElement("div");
+    d.className = "p-sonuc"; d.textContent = ad;
+    d.addEventListener("click", function(){
+      seciliPersonel.push(ad); personelCiz();
+      pArama.value = ""; pSonuc.style.display = "none";
+      pArama.focus();
+    });
+    pSonuc.appendChild(d);
+  });
+  pSonuc.style.display = "block";
+}
+
+pArama.addEventListener("input", function(){
+  personelListele(pArama.value.trim().toLocaleLowerCase("tr"));
+});
+pArama.addEventListener("focus", function(){
+  personelListele(pArama.value.trim().toLocaleLowerCase("tr"));
+});
+document.addEventListener("click", function(e){
+  if (!pSonuc.contains(e.target) && e.target !== pArama) pSonuc.style.display = "none";
+});
 
 // Açıklama hızlı çipleri
 document.querySelectorAll(".hizli-cip").forEach(function(c){
@@ -356,8 +410,7 @@ document.getElementById("kaydetBtn").addEventListener("click", function(){
   var bas = document.getElementById("baslangic").value;
   var bit = document.getElementById("bitis").value;
 
-  var kisiler = [];
-  document.querySelectorAll("#personelCipler .cip.aktif").forEach(function(c){ kisiler.push(c.textContent); });
+  var kisiler = seciliPersonel.slice();
   var ek = document.getElementById("ekPersonel").value.trim();
   if (ek) kisiler.push(ek);
 
